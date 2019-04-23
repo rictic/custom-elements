@@ -62,3 +62,6 @@ Element.prototype.__CE_definition;
 
 /** @type {!DocumentFragment|undefined} */
 Element.prototype.__CE_shadowRoot;
+
+/** @type {boolean} */
+HTMLElement.es5Shimmed;

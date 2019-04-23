@@ -16,13 +16,15 @@
  */
 (function() {
   if (
+    // An es5 shim is already loaded, don't load again.
+    HTMLElement.es5Shimmed ||
     // No Reflect, no classes, no need for shim because native custom elements
     // require ES2015 classes or Reflect.
     window.Reflect === undefined ||
     window.customElements === undefined ||
     // The webcomponentsjs custom elements polyfill doesn't require
     // ES2015-compatible construction (`super()` or `Reflect.construct`).
-    window.customElements.polyfillWrapFlushCallback
+    window.customElements['polyfillWrapFlushCallback']
   ) {
     return;
   }
@@ -33,5 +35,6 @@
   };
   HTMLElement.prototype = BuiltInHTMLElement.prototype;
   HTMLElement.prototype.constructor = HTMLElement;
+  HTMLElement.es5Shimmed = true;
   Object.setPrototypeOf(HTMLElement, BuiltInHTMLElement);
 })();
