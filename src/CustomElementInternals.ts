@@ -1,91 +1,65 @@
 /**
  * @license
  * Copyright (c) 2016 The Polymer Project Authors. All rights reserved.
- * This code may only be used under the BSD style license found at http://polymer.github.io/LICENSE.txt
- * The complete set of authors may be found at http://polymer.github.io/AUTHORS.txt
- * The complete set of contributors may be found at http://polymer.github.io/CONTRIBUTORS.txt
- * Code distributed by Google as part of the polymer project is also
- * subject to an additional IP rights grant found at http://polymer.github.io/PATENTS.txt
+ * This code may only be used under the BSD style license found at
+ * http://polymer.github.io/LICENSE.txt The complete set of authors may be found
+ * at http://polymer.github.io/AUTHORS.txt The complete set of contributors may
+ * be found at http://polymer.github.io/CONTRIBUTORS.txt Code distributed by
+ * Google as part of the polymer project is also subject to an additional IP
+ * rights grant found at http://polymer.github.io/PATENTS.txt
  */
 
+import {CustomElementState as CEState} from './CustomElementState.js';
+import {CustomElementDefinition, HTMLImportElement} from './Externs.js';
 import * as Utilities from './Utilities.js';
-import CEState from './CustomElementState.js';
 
 export default class CustomElementInternals {
-  constructor() {
-    /** @type {!Map<string, !CustomElementDefinition>} */
-    this._localNameToDefinition = new Map();
+  private readonly _localNameToDefinition =
+      new Map<string, CustomElementDefinition>();
+  private readonly _constructorToDefinition =
+      new Map<{new(): unknown}, CustomElementDefinition>();
+  private readonly _patchesNode: Array<(node: Node) => void> = [];
+  private readonly _patchesElement: Array<(elem: Element) => void> = [];
+  private _hasPatches = false;
 
-    /** @type {!Map<!Function, !CustomElementDefinition>} */
-    this._constructorToDefinition = new Map();
-
-    /** @type {!Array<!function(!Node)>} */
-    this._patchesNode = [];
-
-    /** @type {!Array<!function(!Element)>} */
-    this._patchesElement = [];
-
-    /** @type {boolean} */
-    this._hasPatches = false;
-  }
-
-  /**
-   * @param {string} localName
-   * @param {!CustomElementDefinition} definition
-   */
-  setDefinition(localName, definition) {
+  setDefinition(localName: string, definition: CustomElementDefinition) {
     this._localNameToDefinition.set(localName, definition);
-    this._constructorToDefinition.set(definition.constructorFunction, definition);
+    this._constructorToDefinition.set(
+        definition.constructorFunction, definition);
   }
 
-  /**
-   * @param {string} localName
-   * @return {!CustomElementDefinition|undefined}
-   */
-  localNameToDefinition(localName) {
+  localNameToDefinition(localName: string) {
     return this._localNameToDefinition.get(localName);
   }
 
-  /**
-   * @param {!Function} constructor
-   * @return {!CustomElementDefinition|undefined}
-   */
-  constructorToDefinition(constructor) {
+  constructorToDefinition(constructor: {new(): unknown}) {
     return this._constructorToDefinition.get(constructor);
   }
 
-  /**
-   * @param {!function(!Node)} patch
-   */
-  addNodePatch(patch) {
+  addNodePatch(patch: (node: Node) => void) {
     this._hasPatches = true;
     this._patchesNode.push(patch);
   }
 
-  /**
-   * @param {!function(!Element)} patch
-   */
-  addElementPatch(patch) {
+  addElementPatch(patch: (element: Element) => void) {
     this._hasPatches = true;
     this._patchesElement.push(patch);
   }
 
-  /**
-   * @param {!Node} node
-   */
-  patchTree(node) {
-    if (!this._hasPatches) return;
+  patchTree(node: Node) {
+    if (!this._hasPatches)
+      return;
 
-    Utilities.walkDeepDescendantElements(node, element => this.patchElement(element));
+    Utilities.walkDeepDescendantElements(
+        node, element => this.patchElement(element));
   }
 
-  /**
-   * @param {!Node} node
-   */
-  patchNode(node) {
-    if (!this._hasPatches) return;
+  patchNode(node: Node) {
+    if (!this._hasPatches)
+      return;
 
-    if (node.__CE_patched) return;
+    if (node.__CE_patched)
+      return;
     node.__CE_patched = true;
 
     for (let i = 0; i < this._patchesNode.length; i++) {
@@ -93,13 +67,12 @@ export default class CustomElementInternals {
     }
   }
 
-  /**
-   * @param {!Element} element
-   */
-  patchElement(element) {
-    if (!this._hasPatches) return;
+  patchElement(element: Element) {
+    if (!this._hasPatches)
+      return;
 
-    if (element.__CE_patched) return;
+    if (element.__CE_patched)
+      return;
     element.__CE_patched = true;
 
     for (let i = 0; i < this._patchesNode.length; i++) {
@@ -111,31 +84,27 @@ export default class CustomElementInternals {
     }
   }
 
-  /**
-   * @param {!Node} root
-   */
-  connectTree(root) {
-    const elements = [];
+  connectTree(root: Node) {
+    const elements: Element[] = [];
 
-    Utilities.walkDeepDescendantElements(root, element => elements.push(element));
+    Utilities.walkDeepDescendantElements(
+        root, element => elements.push(element));
 
     for (let i = 0; i < elements.length; i++) {
       const element = elements[i];
       if (element.__CE_state === CEState.custom) {
         this.connectedCallback(element);
       } else {
-        this.upgradeElement(element);
+        this.upgradeElement(element as HTMLElement);
       }
     }
   }
 
-  /**
-   * @param {!Node} root
-   */
-  disconnectTree(root) {
-    const elements = [];
+  disconnectTree(root: Node) {
+    const elements: Element[] = [];
 
-    Utilities.walkDeepDescendantElements(root, element => elements.push(element));
+    Utilities.walkDeepDescendantElements(
+        root, element => elements.push(element));
 
     for (let i = 0; i < elements.length; i++) {
       const element = elements[i];
@@ -211,17 +180,23 @@ export default class CustomElementInternals {
    *   upgrade: (!function(!Element)|undefined),
    * }=} options
    */
-  patchAndUpgradeTree(root, options = {}) {
+  patchAndUpgradeTree(root: Node, options: {
+    visitedImports?: Set<Node>,
+    upgrade?: (elem: HTMLElement) => void
+  } = {}) {
     const visitedImports = options.visitedImports || new Set();
-    const upgrade = options.upgrade || (element => this.upgradeElement(element));
+    const upgrade =
+        options.upgrade || (element => this.upgradeElement(element));
 
-    const elements = [];
+    const elements: Element[] = [];
 
-    const gatherElements = element => {
-      if (element.localName === 'link' && element.getAttribute('rel') === 'import') {
+    const gatherElements = (element: Element) => {
+      if (element.localName === 'link' &&
+          element.getAttribute('rel') === 'import') {
+        const importElem = element as HTMLImportElement;
         // The HTML Imports polyfill sets a descendant element of the link to
         // the `import` property, specifically this is *not* a Document.
-        const importNode = /** @type {?Node} */ (element.import);
+        const importNode = importElem.import;
 
         if (importNode instanceof Node) {
           importNode.__CE_isImportDocument = true;
@@ -235,9 +210,10 @@ export default class CustomElementInternals {
           // If this link's import root is not available, its contents can't be
           // walked. Wait for 'load' and walk it when it's ready.
           element.addEventListener('load', () => {
-            const importNode = /** @type {!Node} */ (element.import);
+            const importNode = importElem.import!;
 
-            if (importNode.__CE_documentLoadHandled) return;
+            if (importNode.__CE_documentLoadHandled)
+              return;
             importNode.__CE_documentLoadHandled = true;
 
             // Clone the `visitedImports` set that was populated sync during
@@ -248,7 +224,8 @@ export default class CustomElementInternals {
             const clonedVisitedImports = new Set(visitedImports);
             clonedVisitedImports.delete(importNode);
 
-            this.patchAndUpgradeTree(importNode, {visitedImports: clonedVisitedImports, upgrade});
+            this.patchAndUpgradeTree(
+                importNode, {visitedImports: clonedVisitedImports, upgrade});
           });
         }
       } else {
@@ -267,16 +244,14 @@ export default class CustomElementInternals {
     }
 
     for (let i = 0; i < elements.length; i++) {
-      upgrade(elements[i]);
+      upgrade(elements[i] as HTMLElement);
     }
   }
 
-  /**
-   * @param {!HTMLElement} element
-   */
-  upgradeElement(element) {
+  upgradeElement(element: HTMLElement) {
     const currentState = element.__CE_state;
-    if (currentState !== undefined) return;
+    if (currentState !== undefined)
+      return;
 
     // Prevent elements created in documents without a browsing context from
     // upgrading.
@@ -288,14 +263,15 @@ export default class CustomElementInternals {
     //   "The defaultView IDL attribute of the Document interface, on getting,
     //   must return this Document's browsing context's WindowProxy object, if
     //   this Document has an associated browsing context, or null otherwise."
-    const ownerDocument = element.ownerDocument;
-    if (
-      !ownerDocument.defaultView &&
-      !(ownerDocument.__CE_isImportDocument && ownerDocument.__CE_hasRegistry)
-    ) return;
+    const ownerDocument = element.ownerDocument!;
+    if (!ownerDocument.defaultView &&
+        !(ownerDocument.__CE_isImportDocument &&
+          ownerDocument.__CE_hasRegistry))
+      return;
 
     const definition = this.localNameToDefinition(element.localName);
-    if (!definition) return;
+    if (!definition)
+      return;
 
     definition.constructionStack.push(element);
 
@@ -304,7 +280,8 @@ export default class CustomElementInternals {
       try {
         let result = new (constructor)();
         if (result !== element) {
-          throw new Error('The custom element constructor did not produce the element being upgraded.');
+          throw new Error(
+              'The custom element constructor did not produce the element being upgraded.');
         }
       } finally {
         definition.constructionStack.pop();
@@ -333,40 +310,28 @@ export default class CustomElementInternals {
     }
   }
 
-  /**
-   * @param {!Element} element
-   */
-  connectedCallback(element) {
-    const definition = element.__CE_definition;
+  connectedCallback(element: Element) {
+    const definition = element.__CE_definition!;
     if (definition.connectedCallback) {
       definition.connectedCallback.call(element);
     }
   }
 
-  /**
-   * @param {!Element} element
-   */
-  disconnectedCallback(element) {
-    const definition = element.__CE_definition;
+  disconnectedCallback(element: Element) {
+    const definition = element.__CE_definition!;
     if (definition.disconnectedCallback) {
       definition.disconnectedCallback.call(element);
     }
   }
 
-  /**
-   * @param {!Element} element
-   * @param {string} name
-   * @param {?string} oldValue
-   * @param {?string} newValue
-   * @param {?string} namespace
-   */
-  attributeChangedCallback(element, name, oldValue, newValue, namespace) {
-    const definition = element.__CE_definition;
-    if (
-      definition.attributeChangedCallback &&
-      definition.observedAttributes.indexOf(name) > -1
-    ) {
-      definition.attributeChangedCallback.call(element, name, oldValue, newValue, namespace);
+  attributeChangedCallback(
+      element: Element, name: string, oldValue?: string|null,
+      newValue?: string|null, namespace?: string|null) {
+    const definition = element.__CE_definition!;
+    if (definition.attributeChangedCallback &&
+        definition.observedAttributes.indexOf(name) > -1) {
+      definition.attributeChangedCallback.call(
+          element, name, oldValue, newValue, namespace);
     }
   }
 }

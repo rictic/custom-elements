@@ -1,14 +1,17 @@
 /**
  * @license
  * Copyright (c) 2016 The Polymer Project Authors. All rights reserved.
- * This code may only be used under the BSD style license found at http://polymer.github.io/LICENSE.txt
- * The complete set of authors may be found at http://polymer.github.io/AUTHORS.txt
- * The complete set of contributors may be found at http://polymer.github.io/CONTRIBUTORS.txt
- * Code distributed by Google as part of the polymer project is also
- * subject to an additional IP rights grant found at http://polymer.github.io/PATENTS.txt
+ * This code may only be used under the BSD style license found at
+ * http://polymer.github.io/LICENSE.txt The complete set of authors may be found
+ * at http://polymer.github.io/AUTHORS.txt The complete set of contributors may
+ * be found at http://polymer.github.io/CONTRIBUTORS.txt Code distributed by
+ * Google as part of the polymer project is also subject to an additional IP
+ * rights grant found at http://polymer.github.io/PATENTS.txt
  */
 
-const reservedTagList = new Set([
+import {HTMLImportElement} from './Externs.js';
+
+const reservedTagList: ReadonlySet<string> = new Set([
   'annotation-xml',
   'color-profile',
   'font-face',
@@ -19,55 +22,43 @@ const reservedTagList = new Set([
   'missing-glyph',
 ]);
 
-/**
- * @param {string} localName
- * @returns {boolean}
- */
-export function isValidCustomElementName(localName) {
+export function isValidCustomElementName(localName: string) {
   const reserved = reservedTagList.has(localName);
   const validForm = /^[a-z][.0-9_a-z]*-[\-.0-9_a-z]*$/.test(localName);
   return !reserved && validForm;
 }
 
-/**
- * @param {!Node} node
- * @return {boolean}
- */
-export function isConnected(node) {
+export function isConnected(node: Node) {
   // Use `Node#isConnected`, if defined.
   const nativeValue = node.isConnected;
   if (nativeValue !== undefined) {
     return nativeValue;
   }
 
-  /** @type {?Node|undefined} */
-  let current = node;
-  while (current && !(current.__CE_isImportDocument || current instanceof Document)) {
-    current = current.parentNode || (window.ShadowRoot && current instanceof ShadowRoot ? current.host : undefined);
+  let current: Node|undefined = node;
+  while (current &&
+         !(current.__CE_isImportDocument || current instanceof Document)) {
+    current = current.parentNode ||
+        (window.ShadowRoot && current instanceof ShadowRoot ? current.host :
+                                                              undefined);
   }
-  return !!(current && (current.__CE_isImportDocument || current instanceof Document));
+  return !!(
+      current &&
+      (current.__CE_isImportDocument || current instanceof Document));
 }
 
-/**
- * @param {!Node} root
- * @param {!Node} start
- * @return {?Node}
- */
-function nextSiblingOrAncestorSibling(root, start) {
-  let node = start;
+function nextSiblingOrAncestorSibling(root: Node, start: Node) {
+  let node: Node|null = start;
   while (node && node !== root && !node.nextSibling) {
     node = node.parentNode;
   }
   return (!node || node === root) ? null : node.nextSibling;
 }
 
-/**
- * @param {!Node} root
- * @param {!Node} start
- * @return {?Node}
- */
-function nextNode(root, start) {
-  return start.firstChild ? start.firstChild : nextSiblingOrAncestorSibling(root, start);
+
+function nextNode(root: Node, start: Node) {
+  return start.firstChild ? start.firstChild :
+                            nextSiblingOrAncestorSibling(root, start);
 }
 
 /**
@@ -75,24 +66,26 @@ function nextNode(root, start) {
  * @param {!function(!Element)} callback
  * @param {!Set<Node>=} visitedImports
  */
-export function walkDeepDescendantElements(root, callback, visitedImports = new Set()) {
-  let node = root;
+export function walkDeepDescendantElements(
+    root: Node, callback: (elem: Element) => void, visitedImports = new Set()) {
+  let node: Node|null = root;
   while (node) {
     if (node.nodeType === Node.ELEMENT_NODE) {
-      const element = /** @type {!Element} */(node);
+      const element = node as Element;
 
       callback(element);
 
       const localName = element.localName;
       if (localName === 'link' && element.getAttribute('rel') === 'import') {
-        // If this import (polyfilled or not) has it's root node available,
+        // If this import (polyfilled or not) has its root node available,
         // walk it.
-        const importNode = /** @type {!Node} */ (element.import);
+        const importNode = (element as HTMLImportElement).import;
         if (importNode instanceof Node && !visitedImports.has(importNode)) {
           // Prevent multiple walks of the same import root.
           visitedImports.add(importNode);
 
-          for (let child = importNode.firstChild; child; child = child.nextSibling) {
+          for (let child = importNode.firstChild; child;
+               child = child.nextSibling) {
             walkDeepDescendantElements(child, callback, visitedImports);
           }
         }
@@ -114,7 +107,8 @@ export function walkDeepDescendantElements(root, callback, visitedImports = new 
       // Walk shadow roots.
       const shadowRoot = element.__CE_shadowRoot;
       if (shadowRoot) {
-        for (let child = shadowRoot.firstChild; child; child = child.nextSibling) {
+        for (let child = shadowRoot.firstChild; child;
+             child = child.nextSibling) {
           walkDeepDescendantElements(child, callback, visitedImports);
         }
       }
@@ -133,6 +127,6 @@ export function walkDeepDescendantElements(root, callback, visitedImports = new 
  * @param {string} name
  * @param {*} value
  */
-export function setPropertyUnchecked(destination, name, value) {
-  destination[name] = value;
-}
+// export function setPropertyUnchecked(destination, name, value) {
+// destination[name] = value;
+// }

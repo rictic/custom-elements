@@ -1,4 +1,7 @@
 node_modules/
 
-npm-debug.log*
-custom-elements.min.js*
+/npm-debug.log*
+/custom-elements.min.js*
+
+/buildcache
+/lib/
